@@ -805,7 +805,7 @@ function update(dt) {
   G.dist = Math.max(G.dist, p.y / PX_PER_M);
 
   for (const o of G.obs) {
-    if (o.k === 'npc') { o.y += o.vy * dt; o.wob += dt * 3; o.x += Math.sin(o.wob) * 12 * dt; }
+    if (o.k === 'npc') { if (o.down) o.down += dt; else { o.y += o.vy * dt; o.wob += dt * 3; o.x += Math.sin(o.wob) * 12 * dt; } }
     else if (o.k === 'cat') { o.x += o.vx * dt; o.ph += dt * 10; }
     else if (o.k === 'boba' || o.k === 'puddle' || o.k === 'barrier') o.ph = (o.ph || 0) + dt * 4;
     else if (o.k === 'car' && o.door) {
@@ -876,7 +876,7 @@ function update(dt) {
     if (dd < 36) {
       b.gone = true;
       if (isShiba) { T.slow = 2.5; G.hits++; float(T.x, T.y - 150, '命中！柴犬喝珍奶減速', '#13606e'); }
-      else if (!T.tipped) { T.tipped = true; G.cups += CFG.drinks.npcBonus; G.tips++; float(T.x, T.y - 60, '外送員收到！+' + CFG.drinks.npcBonus + ' 杯', '#e0521a'); }
+      else if (!T.tipped) { T.tipped = true; T.down = 0.001; T.hit = true; G.cups += CFG.drinks.npcBonus; G.tips++; float(T.x, T.y - 60, '外送員被砸倒！+' + CFG.drinks.npcBonus + ' 杯', '#e0521a'); }
       else float(T.x, T.y - 60, '已經請過他了', '#5c6168');
       continue;
     }
@@ -1040,7 +1040,14 @@ function render() {
         if (o.fly) { ctx.save(); ctx.translate(x, y - 20); ctx.rotate(o.fly * 9); ctx.drawImage(SPR.cone, -18, -24); ctx.restore(); }
         else ctx.drawImage(SPR.cone, x - SPR.cone.width / 2, y - SPR.cone.height);
         break; }
-      case 'npc': drawRider(SPR[o.spr], x, y, Math.sin(o.wob) * .4, 0, false); break;
+      case 'npc':
+        if (o.down) {
+          // 被珍奶砸中：連人帶車倒在路上（倒地後不會再撞到你），頭上冒星星
+          drawRider(SPR[o.spr], x, y, 0, 0, true);
+          ctx.fillStyle = '#ffe14a'; for (let i = 0; i < 3; i++) { const a = T * 5 + i * 2.1; ctx.fillRect(x + Math.cos(a) * 24 - 3, y - 50 + Math.sin(a) * 7, 6, 6); }
+          if (o.down < 0.6) { ctx.fillStyle = 'rgba(224,174,108,.9)'; for (let i = 0; i < 5; i++) ctx.fillRect(x - 20 + i * 10, y - 30 - o.down * 40 + (i % 2) * 6, 5, 5); }
+        } else drawRider(SPR[o.spr], x, y, Math.sin(o.wob) * .4, 0, false);
+        break;
       case 'parked': ctx.drawImage(o.spr, x - o.spr.width / 2, y - o.spr.height); break;
       case 'cat': { const f = Math.floor(o.ph) % 2, c = o.vx < 0 ? SPR.catF[f] : SPR.cat[f]; ctx.drawImage(c, x - c.width / 2, y - c.height); break; }
       case 'boba': {
