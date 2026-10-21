@@ -97,6 +97,11 @@ body{margin:0;background:var(--street);color:var(--ink);font-family:var(--cjk);o
 .board .sc{font-family:var(--pix);font-weight:700;font-size:17px;color:var(--num);font-variant-numeric:tabular-nums}
 .board li.me{background:#fff3c4}
 .board .you{font-size:13px;background:var(--title);color:#fff;padding:0 5px;margin-left:6px}
+.stagehint{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:3;background:var(--cream);border:3px solid var(--frame);box-shadow:3px 3px 0 var(--frame);
+  padding:4px 14px;font-size:18px;white-space:nowrap;pointer-events:none}
+.stagehint b{color:var(--num);font-weight:400}
+.rb{font-size:15px;padding:1px 8px;border:2px solid var(--frame);color:var(--ink);white-space:nowrap;
+  background:linear-gradient(90deg,#ff7a7a,#ffd36b,#9ff28a,#7fd8ff,#c9a2ff)}
 .board .empty{display:block;padding:18px 12px;font-size:17px;color:#5d5648;text-align:center}
 @media (max-width:640px){
   .tbar h1{font-size:19px}.tbar .en{display:none}
@@ -114,7 +119,7 @@ body{margin:0;background:var(--street);color:var(--ink);font-family:var(--cjk);o
 <div class="win">
   <div class="tbar">
     <canvas id="ticon" width="12" height="18" aria-hidden="true"></canvas>
-    <h1>Shiba外送</h1><span class="en">SHIBA DELIVERY</span>
+    <h1>Shiba外送</h1><span class="en">SHIBA DELIVERY</span><span class="rb" id="rbBadge" hidden>🌈 彩虹快送號</span>
     <span class="sp"></span>
     <button class="wbtn" type="button" id="bPause" aria-label="暫停">_</button>
     <span class="wbtn" aria-hidden="true">□</span>
@@ -123,7 +128,7 @@ body{margin:0;background:var(--street);color:var(--ink);font-family:var(--cjk);o
   <div class="hud">
     <div class="cell"><span class="lab">距離</span><span class="val" id="hDist">0<small>m</small></span></div>
     <span class="div"></span>
-    <div class="cell"><canvas class="icon" id="hicon" width="12" height="18" style="width:18px;height:27px;image-rendering:pixelated"></canvas><span class="lab">飲料</span><span class="val" id="hCups">00</span><span class="ammo" id="hAmmo">手上 0</span></div>
+    <div class="cell"><canvas class="icon" id="hicon" width="12" height="18" style="width:18px;height:27px;image-rendering:pixelated"></canvas><span class="lab">飲料</span><span class="val" id="hCups">00</span><span class="ammo" id="hAmmo">↑ 丟</span></div>
     <span class="div"></span>
     <div class="cell"><span class="lab">愛心</span><span class="hearts" id="hHearts"></span></div>
     <span class="div"></span>
@@ -131,18 +136,20 @@ body{margin:0;background:var(--street);color:var(--ink);font-family:var(--cjk);o
   </div>
   <div class="stage" id="stage">
     <canvas id="cv"></canvas>
+    <div class="stagehint" id="stHint" hidden></div>
     <div class="ov" id="ovTitle">
       <div class="card">
         <div class="ct">SHIBA.EXE</div>
         <div class="cb">
           <h2>Shiba外送</h2>
-          <p>今天最後一單，路可以一直騎下去。你有 3 顆愛心，撞到東西扣一顆。每隔 5 秒，餓壞的客人會下樓追你 15 秒，而且一次比一次快。</p>
+          <p>今天最後一單，路可以一直騎下去。你有 3 顆愛心，撞到東西扣一顆。騎 50 秒後，餓壞的客人會下樓追你 15 秒，之後每 30 秒再來一次，而且一次比一次快。</p>
           <div class="rules">
             <span><kbd>←</kbd> <kbd>→</kbd></span><span>左右閃避</span>
             <span><kbd>↓</kbd></span><span>按住加速</span>
             <span><kbd>SPACE</kbd></span><span>按住煞車</span>
-            <span><kbd>↑</kbd></span><span>柴犬追來時丟一杯珍奶，牠會減速 2.5 秒</span>
-            <span>珍奶</span><span>沿路收集，算排行榜杯數，也是你的彈藥</span>
+            <span><kbd>↑</kbd></span><span>丟一杯珍奶：柴犬會減速 2.5 秒；丟中其他外送員 +10 杯</span>
+            <span>珍奶</span><span>沿路收集，就是排行榜杯數；丟出去的會從杯數扣掉</span>
+            <span>街景</span><span>每 60 秒換一區：巷弄 → 商圈 → 雨夜施工，越來越難</span>
             <span>手機</span><span>手指左右拖曳轉向</span>
           </div>
           <form class="field" id="nameForm" autocomplete="off">
@@ -224,7 +231,7 @@ function poly(g, pts, fill, stroke) { g.beginPath(); pts.forEach(([x, y], i) => 
 function ell(g, x, y, rx, ry, fill) { g.fillStyle = fill; g.beginPath(); g.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); g.fill(); }
 function chars(rows, pal) {
   const h = rows.length, w = Math.max(...rows.map(r => r.length)), c = cnv(w, h), g = c.getContext('2d');
-  rows.forEach((r, j) => { for (let i = 0; i < r.length; i++) { const col = pal[r[i]]; if (col) { g.fillStyle = col; g.fillRect(i, j, 1, 1); } } });
+  rows.forEach((r, j) => { for (let i = 0; i < r.length; i++) { const col = typeof pal === 'function' ? pal(r[i], i, j, w, h) : pal[r[i]]; if (col) { g.fillStyle = col; g.fillRect(i, j, 1, 1); } } });
   return c;
 }
 const RIDER_ROWS = [
@@ -257,7 +264,13 @@ const SPR = {
   rider: up(chars(RIDER_ROWS, riderPal('#159c80', '#0b5f4e', '#3fd3b4')), S3),
   npcPink: up(chars(RIDER_ROWS, riderPal('#e8457a', '#9a1f48', '#ff8fb5')), S3),
   npcOrange: up(chars(RIDER_ROWS, riderPal('#f08a1e', '#9a520a', '#ffc06a')), S3),
-  npcBlue: up(chars(RIDER_ROWS, riderPal('#2f62d0', '#16337a', '#7fa6ff')), S3)
+  npcBlue: up(chars(RIDER_ROWS, riderPal('#2f62d0', '#16337a', '#7fa6ff')), S3),
+  // 排行榜前 3 名：彩虹快送號（安全帽、外送箱、車身換成彩虹）
+  riderRainbow: up(chars(RIDER_ROWS, (ch, i, j, w, h) => {
+    const hue = Math.round((i / w * 300 + j / h * 60) % 360);
+    if (ch === 'G') return `hsl(${hue},85%,58%)`; if (ch === 'g') return `hsl(${hue},80%,38%)`; if (ch === 'T') return `hsl(${(hue + 40) % 360},90%,72%)`;
+    return BASEPAL[ch];
+  }), S3)
 };
 const bobaSmall = pix(12, 18, g => {
   g.fillStyle = '#16a085'; g.fillRect(7, 0, 2, 6);
@@ -275,7 +288,7 @@ SPR.cone = up(pix(12, 16, g => {
   g.save(); poly(g, [[6, 0], [1, 13], [11, 13]]); g.clip(); g.fillStyle = '#ffffff'; g.fillRect(0, 5, 12, 2); g.fillRect(0, 9, 12, 2); g.restore();
   g.fillStyle = '#c24a0a'; g.fillRect(1, 13, 10, 1);
 }), S3);
-const carSmall = pix(46, 48, g => {
+const carDraw = (g, door) => {
   g.fillStyle = '#1b1b1f'; for (const [x, y] of [[3, 10], [27, 10], [3, 32], [27, 32]]) g.fillRect(x, y, 4, 9);
   g.fillStyle = '#5c6168'; g.beginPath(); g.roundRect(4, 3, 26, 44, 6); g.fill();
   g.fillStyle = '#c3c7cc'; g.beginPath(); g.roundRect(5, 4, 24, 42, 5); g.fill();
@@ -285,11 +298,13 @@ const carSmall = pix(46, 48, g => {
   g.fillStyle = '#3b4552'; g.fillRect(8, 31, 18, 5);
   g.fillStyle = '#d8261c'; g.fillRect(6, 40, 4, 3); g.fillRect(24, 40, 4, 3);
   g.fillStyle = '#ffffff'; g.fillRect(14, 41, 6, 3);
+  if (!door) return;
   poly(g, [[29, 15], [44, 21], [44, 34], [29, 30]], '#5c6168');
   poly(g, [[30, 16], [43, 22], [43, 33], [30, 29]], '#9ea3aa');
   poly(g, [[31, 17], [41, 22], [41, 26], [31, 22]], '#3b4552');
-});
-SPR.carL = up(carSmall, S3); SPR.carR = flipC(SPR.carL);
+};
+SPR.carL = up(pix(46, 48, g => carDraw(g, true)), S3); SPR.carR = flipC(SPR.carL);
+SPR.carLc = up(pix(46, 48, g => carDraw(g, false)), S3); SPR.carRc = flipC(SPR.carLc);
 function scooter(col) { return up(pix(14, 22, g => {
   g.fillStyle = '#1b1b1f'; g.fillRect(2, 3, 10, 1); g.fillRect(0, 1, 2, 3); g.fillRect(12, 1, 2, 3);
   g.fillStyle = col; g.beginPath(); g.roundRect(2, 5, 10, 14, 3); g.fill();
@@ -348,7 +363,45 @@ for (const id of ['ticon', 'hicon']) { const c = document.getElementById(id), g 
 // ================= setup =================
 const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
 const $ = id => document.getElementById(id);
-const ROAD = 300, WALK = 120, VIEW_MIN = 760;
+const ROAD = 300, WALK = 120, VIEW_MIN = 760; // ROAD = widest half-width (stage 1)
+
+// ================= 可調整設定：柴犬、飲料、三個街區階段與後期難度 =================
+// stages[].from = 本局第幾秒進入；road = 道路半寬（越小越窄）；spacing = [基本間距, 隨機加量]（越小障礙越密）；
+// obs = 各障礙出現權重；comboMax = 同一排最多幾組障礙；pal = 配色；decor = 路邊裝飾機率
+const CFG = {
+  shiba: {first: 50, on: 15, off: 30, warn: 3},
+  drinks: {npcBonus: 10, range: 650},
+  transition: {warn: 3, blend: 700},
+  minGap: 120,                       // 每排障礙至少保留的可通行寬度
+  stages: [
+    {key: 'alley', name: '悠閒巷弄', from: 0, road: 300, spacing: [240, 120], comboMax: 1,
+      obs: {cone: 3, parked: 3, pothole: 1, npc: 2, cat: 1, bump: 1},
+      pal: {bld: '#a8947a', walk: '#e6d3b3', walkLine: '#d3bd98', curb: '#cfc7b8', curbEdge: '#9a9387', road: '#8a8d92', lane: '#efefe9'},
+      shops: ['早餐店', '豆花', '剪髮', '便當', '手機維修'], awnings: ['#e0521a', '#1f8a5a', '#c8321e'],
+      decor: {sign: .3, awning: .25, pole: .15, plant: .85, scooter: .35, truck: 0, fence: 0}, rain: 0, neon: false},
+    {key: 'mall', name: '尖峰商圈', from: 60, road: 255, spacing: [170, 90], comboMax: 2,
+      obs: {cone: 2, parked: 3, door: 3, post: 2, npc: 3, pothole: 1, cat: 1},
+      pal: {bld: '#5d3b52', walk: '#e7a58f', walkLine: '#cf8a7a', curb: '#e0b9ad', curbEdge: '#a07a74', road: '#6d6977', lane: '#f2c86b'},
+      shops: ['珍珠奶茶', '超商', '雞排', '鹽酥雞', '滷味'], awnings: ['#ff7a5c', '#c45ad6', '#f2b705'],
+      decor: {sign: .5, awning: .25, pole: .1, plant: .3, scooter: .75, truck: 0, fence: 0}, rain: 0, neon: false},
+    {key: 'rain', name: '雨夜施工', from: 120, road: 250, spacing: [155, 80], comboMax: 3,
+      obs: {cone: 3, barrier: 3, puddle: 3, pothole: 2, npc: 2, parked: 1},
+      pal: {bld: '#151a33', walk: '#30335a', walkLine: '#3e4170', curb: '#4b4e78', curbEdge: '#22243f', road: '#2a2d42', lane: '#9aa3d6'},
+      shops: ['宵夜', '修車', '燒烤', '藥局', '夜市'], awnings: ['#ff3fa4', '#26d0ff', '#a46bff'],
+      decor: {sign: .55, awning: .1, pole: .15, plant: .1, scooter: .2, truck: .25, fence: .4}, rain: 1, neon: true}
+  ],
+  late: {from: 180, every: 60, spacingMul: 0.93, minSpacing: 115, comboAdd: 1, comboCap: 4, maxLevel: 6}
+};
+// stage boundaries in world space: [{y, s}] — the new stage starts at y and blends in over CFG.transition.blend px
+const lerp = (a, b, t) => a + (b - a) * t;
+const hexRgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+function mix(a, b, t) { if (t <= 0) return a; if (t >= 1) return b; const x = hexRgb(a), y = hexRgb(b); return 'rgb(' + x.map((v, i) => Math.round(lerp(v, y[i], t))).join(',') + ')'; }
+function stageAt(y) {
+  const Z = G.zones; let k = 0; while (k + 1 < Z.length && y >= Z[k + 1].y) k++;
+  const z = Z[k], prev = k > 0 ? Z[k - 1].s : z.s, t = k > 0 ? Math.min(1, (y - z.y) / CFG.transition.blend) : 1;
+  return {a: CFG.stages[prev], b: CFG.stages[z.s], t, s: z.s};
+}
+function R(y) { const st = stageAt(y); return lerp(st.a.road, st.b.road, st.t); }
 let W = 0, H = 0, DPR = 1, zoom = 1, VW = 0, VH = 0;
 function resize() {
   DPR = Math.min(window.devicePixelRatio || 1, 2);
@@ -372,17 +425,20 @@ const asphalt = (() => {
 const asphaltPat = ctx.createPattern(asphalt, 'repeat');
 
 const PX_PER_M = 10;
-const SHOPS = [['珍珠奶茶', '#e0521a', '#fff'], ['鹽酥雞', '#f2b705', '#1b1b1f'], ['便當', '#c8321e', '#fff'], ['手機維修', '#1f8a5a', '#fff'],
+const SHOPS = [['超商', '#1f8a5a', '#fff'], ['宵夜', '#c8321e', '#fff'], ['修車', '#2f62d0', '#fff'], ['燒烤', '#e0521a', '#fff'], ['藥局', '#1f8a5a', '#fff'], ['夜市', '#7a3fc7', '#fff'], ['珍珠奶茶', '#e0521a', '#fff'], ['鹽酥雞', '#f2b705', '#1b1b1f'], ['便當', '#c8321e', '#fff'], ['手機維修', '#1f8a5a', '#fff'],
   ['豆花', '#2f62d0', '#fff'], ['雞排', '#f08a1e', '#1b1b1f'], ['滷味', '#7a3fc7', '#fff'], ['檳榔', '#1f8a5a', '#f2b705'], ['早餐店', '#f2b705', '#c8321e'], ['剪髮', '#2b2b30', '#fff']];
 const signCache = new Map();
-function signCanvas(i) {
-  if (signCache.has(i)) return signCache.get(i);
-  const [txt, bg, fg] = SHOPS[i], n = [...txt].length, w = 40, h = n * 26 + 16;
+function signCanvas(txt, neon, c0) {
+  const key = txt + '|' + (neon ? c0 : '');
+  if (signCache.has(key)) return signCache.get(key);
+  const known = SHOPS.find(x => x[0] === txt), bg = neon ? '#14142a' : (known ? known[1] : c0), fg = neon ? c0 : (known ? known[2] : '#fff');
+  const n = [...txt].length, w = 40, h = n * 26 + 16;
   const c = cnv(w * 2, h * 2), g = c.getContext('2d'); g.scale(2, 2);
-  g.fillStyle = '#2b2b30'; g.fillRect(0, 0, w, h); g.fillStyle = bg; g.fillRect(3, 3, w - 6, h - 6);
+  g.fillStyle = neon ? c0 : '#2b2b30'; g.fillRect(0, 0, w, h); g.fillStyle = bg; g.fillRect(3, 3, w - 6, h - 6);
   g.fillStyle = fg; g.font = '22px DotGothic16, "Noto Sans TC", monospace'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  if (neon) { g.shadowColor = c0; g.shadowBlur = 6; }
   [...txt].forEach((ch, k) => g.fillText(ch, w / 2, 8 + 13 + k * 26));
-  signCache.set(i, c); return c;
+  signCache.set(key, c); return c;
 }
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => signCache.clear());
 
@@ -395,10 +451,10 @@ let G;
 function reset() {
   G = {
     state: 'title', t: 0, dist: 0, cups: 0, falls: 0, hearts: 3, inv: 0, cause: '',
-    ammo: 0, shots: [], throwCd: 0, hits: 0,
+    shots: [], throwCd: 0, hits: 0, tips: 0, zones: [{y: -1e9, s: 0}], stage: 0, nextStage: 1, hintT: 0,
     p: {x: 0, y: 0, vx: 0, speed: 0, mode: 'ride', crashT: 0, airT: 0, airDur: 0, airH: 0, z: 0, spin: 0},
     obs: [], decor: [], tracks: [], floats: [], shiba: null, eatT: 0,
-    nextBand: 520, nextDecor: [-200, -200], camX: 0, camY: 0, camFrac: 0.3, nextShiba: 5, wave: 0, warned: false,
+    nextBand: 520, nextDecor: [-200, -200], camX: 0, camY: 0, camFrac: 0.3, nextShiba: CFG.shiba.first, wave: 0, warned: false,
     left: false, right: false, boost: false, brake: false, steerX: null
   };
 }
@@ -410,47 +466,72 @@ const pick = a => a[(Math.random() * a.length) | 0];
 const LANES = [-200, 0, 200];
 function boxOf(o) {
   switch (o.k) {
-    case 'car': return o.side < 0 ? [o.x - 33, o.x + 87, o.y - 130, o.y - 6] : [o.x - 87, o.x + 33, o.y - 130, o.y - 6];
+    case 'car': { const open = !o.door || o.ds === 'open';
+      return o.side < 0 ? [o.x - 33, o.x + (open ? 87 : 45), o.y - 130, o.y - 6] : [o.x - (open ? 87 : 45), o.x + 33, o.y - 130, o.y - 6]; }
     case 'cone': return [o.x - 13, o.x + 13, o.y - 14, o.y];
     case 'pothole': return [o.x - 34, o.x + 34, o.y - 30, o.y - 6];
+    case 'puddle': return [o.x - o.w / 2, o.x + o.w / 2, o.y - 22, o.y];
     case 'bump': return [o.x - o.w / 2, o.x + o.w / 2, o.y - 14, o.y];
     case 'npc': return [o.x - 16, o.x + 16, o.y - 18, o.y];
     case 'parked': return [o.x - 17, o.x + 17, o.y - 30, o.y];
     case 'cat': return [o.x - 20, o.x + 20, o.y - 14, o.y];
+    case 'post': return [o.x - 7, o.x + 7, o.y - 22, o.y];
+    case 'barrier': return [o.x - o.w / 2, o.x + o.w / 2, o.y - 30, o.y];
   }
   return null;
 }
+function lateLevel() { const L = CFG.late; return G.t < L.from ? 0 : Math.min(L.maxLevel, 1 + Math.floor((G.t - L.from) / L.every)); }
+function pickW(w) { let t = 0; for (const k in w) t += w[k]; let v = Math.random() * t; for (const k in w) { if ((v -= w[k]) < 0) return k; } return Object.keys(w)[0]; }
+// one band = one row of obstacles. Every piece reserves a lateral interval; a piece is dropped if the row would
+// lose its last passable gap (CFG.minGap). Moving riders/cats are not counted (they can be passed around).
 function spawnBand(y) {
-  const d = Math.min(1, G.dist / 2500);
-  const r = Math.random();
-  let o = null;
-  if (r < .2) { const side = Math.random() < .5 ? -1 : 1; o = {k: 'car', side, x: side * (ROAD - 62), y}; }
-  else if (r < .4) { const x0 = rnd(-ROAD + 60, ROAD - 100), n = 1 + ((Math.random() * (2 + d * 2)) | 0); for (let i = 0; i < n; i++) G.obs.push({k: 'cone', x: x0 + i * 40, y: y + i * 6}); }
-  else if (r < .53) o = {k: 'pothole', x: rnd(-ROAD + 60, ROAD - 60), y};
-  else if (r < .69) o = {k: 'npc', x: pick(LANES) + rnd(-40, 40), y, vy: rnd(130, 210), spr: pick(['npcPink', 'npcOrange', 'npcBlue']), wob: rnd(0, 6)};
-  else if (r < .77) { const side = Math.random() < .5 ? -1 : 1; o = {k: 'cat', x: side * (ROAD + 20), y, vx: -side * rnd(80, 120), ph: 0}; }
-  else if (r < .85) o = {k: 'bump', x: pick(LANES), y, w: 190};
-  else if (r < .93) { const side = Math.random() < .5 ? -1 : 1; o = {k: 'parked', x: side * (ROAD - 26), y, spr: pick(SPR.scooters)}; }
-  if (o) G.obs.push(o);
-  if (Math.random() < .3) G.obs.push({k: Math.random() < .5 ? 'grate' : 'manhole', x: rnd(-ROAD + 40, ROAD - 40), y: y + rnd(30, 80), flat: true});
+  const st = stageAt(y), S = st.t >= 0.5 ? st.b : st.a, r = R(y), lv = S.key === 'rain' ? lateLevel() : 0;
+  const used = [];
+  const fits = (x0, x1) => {
+    const iv = used.concat([[x0, x1]]).map(a => [Math.max(-r + 12, a[0]), Math.min(r - 12, a[1])]).sort((a, b) => a[0] - b[0]);
+    let cur = -r + 12, gap = 0;
+    for (const [a, b] of iv) { gap = Math.max(gap, a - cur); cur = Math.max(cur, b); }
+    gap = Math.max(gap, r - 12 - cur); return gap >= CFG.minGap;
+  };
+  const add = (x0, x1, list) => { if (!fits(x0, x1)) return false; used.push([x0, x1]); list.forEach(o => G.obs.push(o)); return true; };
+  const combos = 1 + Math.floor(Math.random() * Math.min(CFG.late.comboCap, S.comboMax + (lv ? Math.min(CFG.late.comboAdd * lv, 2) : 0)));
+  for (let c = 0; c < combos; c++) {
+    const k = pickW(S.obs), side = Math.random() < .5 ? -1 : 1, yy = y + c * rnd(30, 70);
+    if (k === 'cone') { const n = 1 + ((Math.random() * (S.key === 'alley' ? 2 : 3)) | 0), x0 = rnd(-r + 50, r - 50 - n * 40); add(x0 - 14, x0 + (n - 1) * 40 + 14, [...Array(n)].map((_, i) => ({k: 'cone', x: x0 + i * 40, y: yy + i * 6}))); }
+    else if (k === 'parked') { const x = side * (r - 26); add(x - 18, x + 18, [{k: 'parked', x, y: yy, spr: pick(SPR.scooters)}]); }
+    else if (k === 'door') { const x = side * (r - 62); const box = side < 0 ? [x - 33, x + 87] : [x - 87, x + 33]; add(box[0], box[1], [{k: 'car', side, x, y: yy, door: true, ds: 'closed'}]); }
+    else if (k === 'post') { const x = rnd(-r * .25, r * .25), n = 3 + ((Math.random() * 3) | 0); add(x - 8, x + 8, [...Array(n)].map((_, i) => ({k: 'post', x, y: yy + i * 34}))); }
+    else if (k === 'pothole') { const x = rnd(-r + 60, r - 60); add(x - 34, x + 34, [{k: 'pothole', x, y: yy}]); }
+    else if (k === 'puddle') { const w = rnd(70, 120), x = rnd(-r + w / 2 + 14, r - w / 2 - 14); add(x - w / 2, x + w / 2, [{k: 'puddle', x, y: yy, w, ph: Math.random() * 6}]); }
+    else if (k === 'barrier') { const w = rnd(90, Math.min(150, r * .55)), x = side * (r - w / 2 - 8); const ok = add(x - w / 2, x + w / 2, [{k: 'barrier', x, y: yy, w, ph: Math.random() * 6}]);
+      if (ok && Math.random() < .7) { const cx = x - side * (w / 2 + 22); add(cx - 14, cx + 14, [{k: 'cone', x: cx, y: yy - 4}]); } }
+    else if (k === 'bump') { const x = pick([-r * .66, 0, r * .66]); add(x - 95, x + 95, [{k: 'bump', x, y: yy, w: 190}]); }
+    else if (k === 'npc') G.obs.push({k: 'npc', x: pick([-r * .66, 0, r * .66]) + rnd(-40, 40), y: yy, vy: rnd(130, 210), spr: pick(['npcPink', 'npcOrange', 'npcBlue']), wob: rnd(0, 6)});
+    else if (k === 'cat') G.obs.push({k: 'cat', x: side * (r + 20), y: yy, vx: -side * rnd(80, 120), ph: 0});
+  }
+  if (Math.random() < .3) G.obs.push({k: Math.random() < .5 ? 'grate' : 'manhole', x: rnd(-r + 40, r - 40), y: y + rnd(30, 80), flat: true});
+  if (S.rain && Math.random() < .5) G.obs.push({k: 'glow', x: rnd(-r + 30, r - 30), y: y + rnd(0, 120), flat: true, c: pick(S.awnings), w: rnd(30, 70)});
   if (Math.random() < .6) {
-    const n = 1 + ((Math.random() * 3) | 0), x0 = rnd(-ROAD + 50, ROAD - 50), dx = rnd(-35, 35), y0 = y + rnd(40, 90);
+    const n = 1 + ((Math.random() * 3) | 0), x0 = rnd(-r + 50, r - 50), dx = rnd(-35, 35), y0 = y + rnd(40, 90);
     for (let i = 0; i < n; i++) {
-      const c = {k: 'boba', x: Math.max(-ROAD + 30, Math.min(ROAD - 30, x0 + dx * i)), y: y0 + i * 60, ph: Math.random() * 6};
+      const c = {k: 'boba', x: Math.max(-r + 30, Math.min(r - 30, x0 + dx * i)), y: y0 + i * 60, ph: Math.random() * 6};
       const clash = G.obs.some(q => { const b = boxOf(q); return b && c.x > b[0] - 20 && c.x < b[1] + 20 && c.y > b[2] - 20 && c.y < b[3] + 30; });
       if (!clash) G.obs.push(c);
     }
   }
-  return 150 - 55 * d + rnd(0, 80);
+  const sp = lv ? Math.max(CFG.late.minSpacing, S.spacing[0] * Math.pow(CFG.late.spacingMul, lv)) : S.spacing[0];
+  return sp + rnd(0, S.spacing[1]);
 }
 function spawnDecor(side, y) {
-  const r = Math.random();
-  const x = side * (ROAD + WALK - 22);
-  if (r < .42) G.decor.push({k: 'sign', side, x, y, i: (Math.random() * SHOPS.length) | 0});
-  else if (r < .62) G.decor.push({k: 'awning', side, x, y, c: pick(['#e0521a', '#1f8a5a', '#2f62d0', '#c8321e'])});
-  else if (r < .8) G.decor.push({k: 'pole', side, x: side * (ROAD + 18), y});
-  if (Math.random() < .7) G.decor.push({k: 'plant', side, x: side * (ROAD + rnd(40, 75)), y: y + rnd(20, 80), spr: pick(SPR.plants)});
-  if (Math.random() < .5) G.decor.push({k: 'scooterP', side, x: side * (ROAD + rnd(40, 70)), y: y + rnd(60, 120), spr: pick(SPR.scooters)});
+  const st = stageAt(y), S = st.t >= 0.5 ? st.b : st.a, D = S.decor, r = R(y), x = side * (r + WALK - 22);
+  const v = Math.random();
+  if (v < D.sign) G.decor.push({k: 'sign', side, x, y, txt: pick(S.shops), neon: S.neon, c: pick(S.awnings)});
+  else if (v < D.sign + D.awning) G.decor.push({k: 'awning', side, x, y, c: pick(S.awnings)});
+  else if (v < D.sign + D.awning + D.pole) G.decor.push({k: 'pole', side, x: side * (r + 18), y});
+  else if (v < D.sign + D.awning + D.pole + D.truck) G.decor.push({k: 'truck', side, x: side * (r + WALK / 2 + 4), y});
+  if (Math.random() < D.fence) G.decor.push({k: 'fence', side, x: side * (r + 34), y: y + rnd(10, 60), ph: Math.random() * 6});
+  if (Math.random() < D.plant) G.decor.push({k: 'plant', side, x: side * (r + rnd(40, 75)), y: y + rnd(20, 80), spr: pick(SPR.plants)});
+  if (Math.random() < D.scooter) G.decor.push({k: 'scooterP', side, x: side * (r + rnd(40, 70)), y: y + rnd(60, 120), spr: pick(SPR.scooters)});
   return rnd(110, 190);
 }
 function ensureWorld() {
@@ -494,18 +575,25 @@ function holdBtn(id, key) {
 }
 holdBtn('tBoost', 'boost'); holdBtn('tBrake', 'brake');
 $('tThrow').addEventListener('pointerdown', e => { e.preventDefault(); throwDrink(); });
+function throwTarget() {
+  const p = G.p, s = G.shiba; let best = null, bd = CFG.drinks.range;
+  if (s && !s.leaving) { const d = Math.hypot(s.x - p.x, s.y - p.y); if (d < bd) { best = s; bd = d; } }
+  for (const o of G.obs) if (o.k === 'npc' && !o.hit) { const d = Math.hypot(o.x - p.x, o.y - p.y); if (d < bd) { best = o; bd = d; } }
+  return best;
+}
 function throwDrink() {
   if (G.state !== 'play') return;
-  const p = G.p, s = G.shiba;
-  if (!s || s.leaving) { float(p.x, p.y - 80, '柴犬不在，先留著喝', '#5c6168'); return; }
-  if (G.ammo <= 0) { float(p.x, p.y - 80, '手上沒有飲料了！', '#c8321e'); return; }
+  const p = G.p;
   if (G.throwCd > 0 || p.mode === 'crash') return;
-  G.ammo--; G.throwCd = 0.35;
-  G.shots.push({x: p.x, y: p.y - 40 - p.z, t: 0});
+  if (G.cups <= 0) { float(p.x, p.y - 80, '手上沒有飲料了！', '#c8321e'); return; }
+  const tgt = throwTarget();
+  if (!tgt) { float(p.x, p.y - 80, '附近沒有柴犬或外送員', '#5c6168'); return; }
+  G.cups--; G.throwCd = 0.35;   // 丟出去的飲料直接從杯數（＝排行榜杯數）扣掉
+  G.shots.push({x: p.x, y: p.y - 40 - p.z, t: 0, tgt});
 }
 
 // ================= flow =================
-const SHIBA_ON = 15, SHIBA_OFF = 5; // first visit at 5s (see reset)
+const SHIBA_ON = CFG.shiba.on, SHIBA_OFF = CFG.shiba.off; // first visit at CFG.shiba.first s (see reset)
 let NAME = '';
 try { NAME = localStorage.getItem('lastorder-name') || ''; } catch (e) {}
 $('pname').value = NAME;
@@ -523,7 +611,7 @@ function togglePause() {
   else if (G.state === 'paused') { G.state = 'play'; $('ovPause').hidden = true; }
 }
 function again() {
-  reset(); G.state = 'play';
+  reset(); G.state = 'play'; hideHint();
   for (const id of ['ovOver', 'ovPause', 'ovTitle']) $(id).hidden = true;
 }
 function gameOver() {
@@ -636,8 +724,23 @@ document.addEventListener('visibilitychange', () => { if (document.hidden && G.s
 const mmss = t => { t = Math.max(0, Math.ceil(t)); return String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0'); };
 function float(x, y, text, color) { G.floats.push({x, y, text, color, t: 0}); }
 
+// ================= stage hint & rainbow =================
+function showHint(html) { const el = $('stHint'); el.innerHTML = html; el.hidden = false; }
+function hideHint() { $('stHint').hidden = true; }
+// 排行榜前 3 名（杯數或距離任一）→ 彩虹快送號；與街區階段各自獨立
+let RAINBOW = false;
+function RAINBOW_LIVE() {
+  let on = false;
+  if (UID && rows.length) for (const k of ['cups', 'dist']) {
+    const o = k === 'cups' ? 'dist' : 'cups';
+    const top = rows.filter(r => typeof r[k] === 'number' && r[k] > 0).sort((a, b) => (b[k] - a[k]) || ((+b[o] || 0) - (+a[o] || 0))).slice(0, 3);
+    if (top.some(r => r.id === UID)) on = true;
+  }
+  if (on !== RAINBOW) { RAINBOW = on; $('rbBadge').hidden = !on; if (on && G.state === 'play') float(G.p.x, G.p.y - 100, '排行榜前 3 名！彩虹快送號上路', '#7a3fc7'); }
+}
+
 // ================= update =================
-const CRASH_TXT = {car: '被車門開到了！', cone: '撞飛三角錐！', npc: '擦撞機車！', parked: '撞到違停機車！', cat: '急閃貓咪，摔車！'};
+const CRASH_TXT = {post: '撞上分隔柱！', barrier: '撞到施工圍欄！', car: '被車門開到了！', cone: '撞飛三角錐！', npc: '擦撞機車！', parked: '撞到違停機車！', cat: '急閃貓咪，摔車！'};
 function crash(o) {
   const p = G.p;
   p.mode = 'crash'; p.crashT = 1.0; p.speed = 0; p.vx = 0; p.z = 0; G.falls++;
@@ -666,7 +769,15 @@ function update(dt) {
     G.shiba = {x: p.x, y: G.camY + 10, v: 420, ph: 0, stun: 0.6, t0: G.t, wave: G.wave};
     float(p.x, p.y - 90, G.wave > 1 ? '柴犬又下樓了！第 ' + G.wave + ' 波！' : '客人下樓了！快逃！', '#c8321e');
   }
-  if (!G.shiba && G.nextShiba - G.t <= 3 && !G.warned) { G.warned = true; float(p.x, p.y - 90, '樓上傳來狗叫聲……', '#c8321e'); }
+  if (!G.shiba && G.nextShiba - G.t <= CFG.shiba.warn && !G.warned) { G.warned = true; float(p.x, p.y - 90, '樓上傳來狗叫聲……', '#c8321e'); }
+  // street stages: warn 3 s ahead, then the new street scrolls in from the front of the screen
+  const NS = CFG.stages[G.nextStage];
+  if (NS && G.t >= NS.from - CFG.transition.warn && !G.hintT) {
+    const yT = Math.max(p.y + Math.max(p.speed, 260) * CFG.transition.warn, G.camY + VH + 60);
+    G.zones.push({y: yT, s: G.nextStage}); G.hintT = CFG.transition.warn + 2;
+    showHint('前方進入<b>' + NS.name + '</b>');
+  }
+  if (G.hintT) { G.hintT -= dt; if (G.hintT <= 0) { G.hintT = 0; G.nextStage++; hideHint(); } }
   // while the shiba is chasing: rider slides to screen center (less road ahead to react)
   const chasing = !!G.shiba && !G.shiba.leaving;
   G.camFrac += ((chasing ? 0.5 : 0.3) - G.camFrac) * Math.min(1, dt * 1.2);
@@ -680,7 +791,7 @@ function update(dt) {
     const mult = chasing ? 1.3 : 1;
     const target = G.brake ? 110 : (G.boost ? 500 + 40 * d : 300 + 60 * d) * mult;
     if (p.mode === 'ride') p.speed += (target - p.speed) * Math.min(1, dt * (target > p.speed ? 1.6 : 4));
-    p.x = Math.max(-ROAD + 22, Math.min(ROAD - 22, p.x + p.vx * dt));
+    const rp = R(p.y); p.x = Math.max(-rp + 22, Math.min(rp - 22, p.x + p.vx * dt));
     p.y += p.speed * dt;
     if (p.mode === 'air') {
       p.airT += dt; p.z = Math.sin(Math.PI * Math.min(1, p.airT / p.airDur)) * p.airH;
@@ -696,7 +807,12 @@ function update(dt) {
   for (const o of G.obs) {
     if (o.k === 'npc') { o.y += o.vy * dt; o.wob += dt * 3; o.x += Math.sin(o.wob) * 12 * dt; }
     else if (o.k === 'cat') { o.x += o.vx * dt; o.ph += dt * 10; }
-    else if (o.k === 'boba') o.ph += dt * 4;
+    else if (o.k === 'boba' || o.k === 'puddle' || o.k === 'barrier') o.ph = (o.ph || 0) + dt * 4;
+    else if (o.k === 'car' && o.door) {
+      // 車門：玩家接近時先閃黃燈＋驚嘆號 0.9 秒，再打開
+      if (o.ds === 'closed' && o.y - p.y < 330 && o.y > p.y - 40) { o.ds = 'warn'; o.wt = 0.9; }
+      else if (o.ds === 'warn') { o.wt -= dt; if (o.wt <= 0) o.ds = 'open'; }
+    }
     if (o.fly) { o.fly += dt; o.x += o.fvx * dt; o.y += 260 * dt; }
   }
   // collisions
@@ -706,17 +822,17 @@ function update(dt) {
       if (o.k === 'boba') {
         if (Math.abs(o.x - p.x) < 28 && Math.abs(o.y - p.y) < 34) {
           o.hit = true; o.gone = true; G.cups++;
-          G.ammo++;
           float(o.x, o.y - 40, G.shiba && !G.shiba.leaving ? '+1 杯，按 ↑ 丟柴犬！' : '+1 杯', '#e0521a');
         }
         continue;
       }
       if (p.mode === 'air') continue;
-      if (G.inv > 0 && o.k !== 'bump' && o.k !== 'pothole') continue;
+      if (G.inv > 0 && o.k !== 'bump' && o.k !== 'pothole' && o.k !== 'puddle') continue;
       const b = boxOf(o); if (!b) continue;
       if (p.x + 12 > b[0] && p.x - 12 < b[1] && p.y > b[2] && p.y - 16 < b[3]) {
         if (o.k === 'bump') { o.hit = true; if (p.speed > 80) hop(0.32, 12); }
         else if (o.k === 'pothole') { o.hit = true; hop(0.24, 8); p.speed *= .45; float(p.x, p.y - 70, '坑洞！', '#5c6168'); }
+        else if (o.k === 'puddle') { o.hit = true; p.speed *= .6; p.vx += (Math.random() < .5 ? -1 : 1) * 160; float(p.x, p.y - 70, '積水打滑！', '#2f62d0'); }
         else { crash(o); if (G.state !== 'play') return; break; }
       }
     }
@@ -750,16 +866,18 @@ function update(dt) {
     // never falls off the top of the screen: it stays in view, right behind you
     if (!s.leaving) s.y = Math.max(s.y, G.camY + 20);
   }
-  // thrown drinks home in on the shiba
+  // thrown drinks home in on their target (the shiba or another delivery rider)
   if (G.throwCd > 0) G.throwCd -= dt;
-  const sh = G.shiba;
   for (const b of G.shots) {
     b.t += dt;
-    if (!sh || sh.leaving) { b.gone = true; continue; }
-    const tx = sh.x, ty = sh.y - 60, dx = tx - b.x, dy = ty - b.y, dd = Math.hypot(dx, dy);
-    if (dd < 40) {
-      b.gone = true; sh.slow = 2.5; G.hits++;
-      float(sh.x, sh.y - 150, '命中！柴犬喝珍奶減速', '#13606e');
+    const T = b.tgt, isShiba = T === G.shiba && !!T;
+    if (!T || (isShiba && T.leaving) || (!isShiba && (T.gone || !G.obs.includes(T)))) { b.gone = true; continue; }
+    const tx = T.x, ty = T.y - (isShiba ? 60 : 30), dx = tx - b.x, dy = ty - b.y, dd = Math.hypot(dx, dy);
+    if (dd < 36) {
+      b.gone = true;
+      if (isShiba) { T.slow = 2.5; G.hits++; float(T.x, T.y - 150, '命中！柴犬喝珍奶減速', '#13606e'); }
+      else if (!T.tipped) { T.tipped = true; G.cups += CFG.drinks.npcBonus; G.tips++; float(T.x, T.y - 60, '外送員收到！+' + CFG.drinks.npcBonus + ' 杯', '#e0521a'); }
+      else float(T.x, T.y - 60, '已經請過他了', '#5c6168');
       continue;
     }
     const v = 950 * dt;
@@ -769,6 +887,7 @@ function update(dt) {
   G.shots = G.shots.filter(b => !b.gone);
   const top = G.camY - 300;
   G.obs = G.obs.filter(o => !o.gone && o.y > top && Math.abs(o.x) < ROAD + 200);
+  RAINBOW_LIVE();
   G.decor = G.decor.filter(o => o.y > top);
   G.tracks = G.tracks.filter(t => t.y > top);
 }
@@ -783,7 +902,7 @@ function drawRider(spr, x, y, lean, z, crashed) {
 }
 function render() {
   const p = G.p;
-  const half = ROAD + WALK + 40;
+  const half = R(p.y) + WALK + 40;
   const target = VW / 2 >= half ? 0 : Math.max(-(half - VW / 2), Math.min(half - VW / 2, p.x));
   G.camX += (target - G.camX) * 0.2;
   G.camY = p.y - VH * G.camFrac;
@@ -791,34 +910,59 @@ function render() {
   ctx.setTransform(DPR * zoom, 0, 0, DPR * zoom, 0, 0);
   ctx.imageSmoothingEnabled = false;
   const ox = VW / 2 - G.camX, oy = -G.camY;
-  // buildings beyond sidewalks
-  ctx.fillStyle = '#5a4a40'; ctx.fillRect(0, 0, VW, VH);
-  // sidewalks
-  for (const side of [-1, 1]) {
-    const x0 = side < 0 ? ox - ROAD - WALK : ox + ROAD;
-    ctx.fillStyle = '#d9a294'; ctx.fillRect(x0, 0, WALK, VH);
-    ctx.fillStyle = '#c58c7e';
-    const off = ((-G.camY % 24) + 24) % 24;
-    for (let y = off; y < VH; y += 24) ctx.fillRect(x0, y, WALK, 2);
-    for (let x = 0; x < WALK; x += 24) ctx.fillRect(x0 + x, 0, 2, VH);
-    ctx.fillStyle = '#b9b3a8'; ctx.fillRect(side < 0 ? ox - ROAD - 12 : ox + ROAD, 0, 12, VH);
-    ctx.fillStyle = '#8f897f'; ctx.fillRect(side < 0 ? ox - ROAD - 2 : ox + ROAD, 0, 2, VH);
+  // street, drawn in 8px strips so road width and colours can blend between stages
+  const STRIP = 8, scrollY = G.camY;
+  ctx.save(); ctx.translate(0, 0);
+  for (let sy = 0; sy < VH + STRIP; sy += STRIP) {
+    const wy = scrollY + sy, st = stageAt(wy), A = st.a.pal, B = st.b.pal, t = st.t, r = R(wy);
+    ctx.fillStyle = mix(A.bld, B.bld, t); ctx.fillRect(0, sy, VW, STRIP);
+    for (const side of [-1, 1]) {
+      const x0 = side < 0 ? ox - r - WALK : ox + r;
+      ctx.fillStyle = mix(A.walk, B.walk, t); ctx.fillRect(x0, sy, WALK, STRIP);
+      ctx.fillStyle = mix(A.walkLine, B.walkLine, t);
+      if (((wy % 24) + 24) % 24 < STRIP) ctx.fillRect(x0, sy, WALK, 2);
+      for (let x = 0; x < WALK; x += 24) ctx.fillRect(x0 + x, sy, 2, STRIP);
+      ctx.fillStyle = mix(A.curb, B.curb, t); ctx.fillRect(side < 0 ? ox - r - 12 : ox + r, sy, 12, STRIP);
+      ctx.fillStyle = mix(A.curbEdge, B.curbEdge, t); ctx.fillRect(side < 0 ? ox - r - 2 : ox + r, sy, 2, STRIP);
+    }
+    ctx.fillStyle = mix(A.road, B.road, t); ctx.fillRect(ox - r, sy, r * 2, STRIP);
   }
-  // road
-  ctx.save(); ctx.translate(ox - ROAD, -(G.camY % 160)); ctx.fillStyle = asphaltPat; ctx.fillRect(0, -160, ROAD * 2, VH + 320); ctx.restore();
-  ctx.fillStyle = '#e9e9e4';
+  // asphalt grain on top of the tinted road
+  ctx.globalAlpha = .16;
+  for (let sy = 0; sy < VH + STRIP; sy += STRIP * 4) {
+    const r = R(scrollY + sy);
+    ctx.save(); ctx.beginPath(); ctx.rect(ox - r, sy, r * 2, STRIP * 4); ctx.clip();
+    ctx.translate(ox - ROAD, -(G.camY % 160)); ctx.fillStyle = asphaltPat; ctx.fillRect(0, -160, ROAD * 2, VH + 320); ctx.restore();
+  }
+  ctx.globalAlpha = 1; ctx.restore();
+  // lane dashes and edge lines follow the road width
   const dOff = ((-G.camY % 90) + 90) % 90;
-  for (const lx of [-100, 100]) for (let y = dOff - 90; y < VH; y += 90) ctx.fillRect(ox + lx - 3, y, 6, 44);
-  for (const lx of [-ROAD + 16, ROAD - 20]) ctx.fillRect(ox + lx, 0, 4, VH);
+  for (let y = dOff - 90; y < VH; y += 90) {
+    const wy = scrollY + y + 22, st = stageAt(wy), r = R(wy);
+    ctx.fillStyle = mix(st.a.pal.lane, st.b.pal.lane, st.t);
+    for (const f of [-1 / 3, 1 / 3]) ctx.fillRect(ox + f * r * 1.0 - 3, y, 6, 44);
+  }
+  for (let sy = 0; sy < VH; sy += STRIP) {
+    const wy = scrollY + sy, st = stageAt(wy), r = R(wy);
+    ctx.fillStyle = mix(st.a.pal.lane, st.b.pal.lane, st.t);
+    ctx.fillRect(ox - r + 16, sy, 4, STRIP); ctx.fillRect(ox + r - 20, sy, 4, STRIP);
+  }
   // tracks
   for (const t of G.tracks) { ctx.fillStyle = t.dark ? 'rgba(30,30,32,.55)' : 'rgba(60,62,66,.22)'; ctx.fillRect(t.x + ox - 2, t.y + oy - 3, 3, 6); }
   // flat road objects
   for (const o of G.obs) {
-    if (!(o.flat || o.k === 'pothole' || o.k === 'bump')) continue;
+    if (!(o.flat || o.k === 'pothole' || o.k === 'bump' || o.k === 'puddle')) continue;
     const x = o.x + ox, y = o.y + oy; if (y < -60 || y > VH + 60) continue;
-    if (o.k === 'grate') { ctx.fillStyle = '#3a3b3f'; ctx.fillRect(x - 22, y - 14, 44, 28); ctx.fillStyle = '#1e1f22'; for (let i = 0; i < 6; i++) ctx.fillRect(x - 18 + i * 7, y - 10, 3, 20); }
+    if (o.k === 'glow') { ctx.globalAlpha = .35; ctx.fillStyle = o.c; ctx.fillRect(x - o.w / 2, y - 3, o.w, 3); ctx.fillRect(x - o.w / 3, y + 4, o.w * .66, 2); ctx.globalAlpha = 1; }
+    else if (o.k === 'grate') { ctx.fillStyle = '#3a3b3f'; ctx.fillRect(x - 22, y - 14, 44, 28); ctx.fillStyle = '#1e1f22'; for (let i = 0; i < 6; i++) ctx.fillRect(x - 18 + i * 7, y - 10, 3, 20); }
     else if (o.k === 'manhole') { ctx.fillStyle = '#4a4b50'; ctx.beginPath(); ctx.arc(x, y, 20, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = '#303135'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y, 13, 0, Math.PI * 2); ctx.stroke(); }
     else if (o.k === 'pothole') ctx.drawImage(SPR.pothole, x - SPR.pothole.width / 2, y - SPR.pothole.height);
+    else if (o.k === 'puddle') {
+      // 積水：深色水面＋亮白外框，與霓虹倒影（細線、不可碰撞）明顯不同
+      ctx.fillStyle = '#16304f'; ctx.beginPath(); ctx.ellipse(x, y - 11, o.w / 2, 11, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#d7ecff'; ctx.lineWidth = 3; ctx.stroke();
+      ctx.fillStyle = 'rgba(160,220,255,.55)'; const sh = Math.sin(o.ph || 0) * 6; ctx.fillRect(x - o.w / 4 + sh, y - 15, o.w / 3, 2); ctx.fillRect(x - 6 - sh, y - 8, o.w / 4, 2);
+    }
     else if (o.k === 'bump') {
       ctx.fillStyle = '#1b1b1f'; ctx.fillRect(x - o.w / 2, y - 14, o.w, 14);
       ctx.fillStyle = '#f2c20d'; for (let i = 0; i < o.w; i += 24) ctx.fillRect(x - o.w / 2 + i, y - 14, 12, 14);
@@ -828,7 +972,19 @@ function render() {
   const T = performance.now() / 1000;
   for (const o of G.decor) {
     const x = o.x + ox, y = o.y + oy; if (y < -220 || y > VH + 220) continue;
-    if (o.k === 'sign') { const c = signCanvas(o.i); ctx.drawImage(c, x - c.width / 4, y - c.height / 2, c.width / 2, c.height / 2); }
+    if (o.k === 'sign') { const c = signCanvas(o.txt, o.neon, o.c); if (o.neon) { ctx.shadowColor = o.c; ctx.shadowBlur = 14; } ctx.drawImage(c, x - c.width / 4, y - c.height / 2, c.width / 2, c.height / 2); ctx.shadowBlur = 0; }
+    else if (o.k === 'truck') {
+      // 工程車（路邊裝飾，不可碰撞）
+      ctx.fillStyle = '#2b2b30'; ctx.fillRect(x - 34, y - 96, 68, 100);
+      ctx.fillStyle = '#e8b21a'; ctx.fillRect(x - 31, y - 93, 62, 60); ctx.fillStyle = '#c98f0e'; ctx.fillRect(x - 31, y - 40, 62, 40);
+      ctx.fillStyle = '#7fd8ff'; ctx.fillRect(x - 22, y - 86, 44, 18);
+      ctx.fillStyle = Math.floor(T * 3) % 2 ? '#ff9a1a' : '#5a3a10'; ctx.fillRect(x - 8, y - 100, 16, 6);
+    }
+    else if (o.k === 'fence') {
+      ctx.fillStyle = '#2b2b30'; ctx.fillRect(x - 14, y - 54, 28, 58);
+      for (let i = 0; i < 4; i++) { ctx.fillStyle = i % 2 ? '#1b1b1f' : '#f2c20d'; ctx.fillRect(x - 12, y - 52 + i * 13, 24, 13); }
+      ctx.fillStyle = Math.floor(T * 2.5 + (o.ph || 0)) % 2 ? '#ff4a2a' : '#5a1a10'; ctx.beginPath(); ctx.arc(x, y - 60, 5, 0, Math.PI * 2); ctx.fill();
+    }
     else if (o.k === 'awning') {
       const w = 56, x0 = o.side < 0 ? x - 20 : x - w + 20;
       ctx.fillStyle = '#2b2b30'; ctx.fillRect(x0 - 2, y - 2, w + 4, 74);
@@ -840,6 +996,14 @@ function render() {
     }
     else if (o.k === 'plant' || o.k === 'scooterP') ctx.drawImage(o.spr, x - o.spr.width / 2, y - o.spr.height);
   }
+  // rain (stage 3): drawn before the sprites so obstacles are never hidden by it
+  const mid = stageAt(G.camY + VH * .5), rainK = lerp(mid.a.rain, mid.b.rain, mid.t);
+  if (rainK > 0) {
+    ctx.strokeStyle = 'rgba(190,215,255,' + (.35 * rainK).toFixed(3) + ')'; ctx.lineWidth = 2; ctx.beginPath();
+    const n = Math.round(90 * rainK), sh = (T * 900) % VH;
+    for (let i = 0; i < n; i++) { const rx = (i * 97.3) % VW, ry = ((i * 53.7) % VH + sh) % VH; ctx.moveTo(rx, ry); ctx.lineTo(rx - 5, ry + 16); }
+    ctx.stroke();
+  }
   // sorted sprites
   const list = G.obs.filter(o => !(o.flat || o.k === 'pothole' || o.k === 'bump') && o.y + oy > -150 && o.y + oy < VH + 160);
   list.push({k: 'me', y: p.y});
@@ -848,7 +1012,30 @@ function render() {
   for (const o of list) {
     const x = Math.round(o.x + ox), y = Math.round(o.y + oy);
     switch (o.k) {
-      case 'car': { const c = o.side < 0 ? SPR.carL : SPR.carR; ctx.drawImage(c, o.side < 0 ? x - 45 : x - c.width + 45, y - c.height); break; }
+      case 'car': {
+        const open = !o.door || o.ds === 'open', c = o.side < 0 ? (open ? SPR.carL : SPR.carLc) : (open ? SPR.carR : SPR.carRc);
+        ctx.drawImage(c, o.side < 0 ? x - 45 : x - c.width + 45, y - c.height);
+        if (o.door && o.ds === 'warn') {
+          // 開門前提示：方向燈閃爍＋驚嘆號
+          const on = Math.floor(T * 8) % 2, hx = x + o.side * -6;
+          ctx.fillStyle = on ? '#ffb000' : '#7a4a00'; ctx.fillRect(hx - 30, y - 128, 10, 8); ctx.fillRect(hx + 20, y - 128, 10, 8); ctx.fillRect(hx - 30, y - 18, 10, 8); ctx.fillRect(hx + 20, y - 18, 10, 8);
+          const bx = x - o.side * 70; ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#1b1b1f'; ctx.lineWidth = 3;
+          ctx.beginPath(); ctx.roundRect(bx - 14, y - 112, 28, 34, 6); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = '#c8321e'; ctx.fillRect(bx - 3, y - 106, 6, 16); ctx.fillRect(bx - 3, y - 86, 6, 5);
+        }
+        break; }
+      case 'post':
+        ctx.fillStyle = '#1b1b1f'; ctx.fillRect(x - 7, y - 24, 14, 26);
+        ctx.fillStyle = '#f2c20d'; ctx.fillRect(x - 5, y - 22, 10, 22); ctx.fillStyle = '#1b1b1f'; ctx.fillRect(x - 5, y - 15, 10, 4); ctx.fillRect(x - 5, y - 6, 10, 4);
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(x - 5, y - 22, 10, 3);
+        break;
+      case 'barrier': {
+        ctx.fillStyle = '#1b1b1f'; ctx.fillRect(x - o.w / 2 - 2, y - 32, o.w + 4, 30); ctx.fillRect(x - o.w / 2, y - 4, 6, 6); ctx.fillRect(x + o.w / 2 - 6, y - 4, 6, 6);
+        for (let i = 0; i < o.w; i += 16) { ctx.fillStyle = (i / 16) % 2 ? '#1b1b1f' : '#f2c20d'; ctx.fillRect(x - o.w / 2 + i, y - 30, Math.min(16, o.w - i), 13); }
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(x - o.w / 2, y - 17, o.w, 11); ctx.fillStyle = '#c8321e'; ctx.font = '11px DotGothic16, monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('施工中', x, y - 11);
+        const on = Math.floor(T * 3 + o.ph) % 2; ctx.fillStyle = on ? '#ff9a1a' : '#6a3a10';
+        ctx.beginPath(); ctx.arc(x - o.w / 2 + 8, y - 38, 5, 0, Math.PI * 2); ctx.arc(x + o.w / 2 - 8, y - 38, 5, 0, Math.PI * 2); ctx.fill();
+        break; }
       case 'cone': {
         if (o.fly) { ctx.save(); ctx.translate(x, y - 20); ctx.rotate(o.fly * 9); ctx.drawImage(SPR.cone, -18, -24); ctx.restore(); }
         else ctx.drawImage(SPR.cone, x - SPR.cone.width / 2, y - SPR.cone.height);
@@ -869,7 +1056,13 @@ function render() {
         if (G.inv > 0 && p.mode !== 'crash' && Math.floor(T * 12) % 2) break;
         const sx = Math.round(p.x + ox), sy = Math.round(p.y + oy);
         if (G.boost && p.mode !== 'crash') { ctx.fillStyle = 'rgba(255,255,255,.75)'; for (let i = 0; i < 4; i++) ctx.fillRect(sx - 26 + i * 16, sy - 110 - ((T * 400 + i * 23) % 40), 3, 22); }
-        drawRider(SPR.rider, sx, sy, p.vx / 300, p.z, p.mode === 'crash');
+        if (RAINBOW && p.mode !== 'crash') {
+          // 彩虹快送號拖尾（畫在身後＝畫面上方）
+          const cols = ['#ff5a5a', '#ffb347', '#ffe14a', '#6fe36f', '#5ac8ff', '#a77bff'];
+          cols.forEach((c, i) => { ctx.globalAlpha = .55; ctx.fillStyle = c; ctx.fillRect(sx - 18 + i * 6, sy - 70 - 46 - p.z, 6, 46); });
+          ctx.globalAlpha = 1;
+        }
+        drawRider(RAINBOW ? SPR.riderRainbow : SPR.rider, sx, sy, p.vx / 300, p.z, p.mode === 'crash');
         if (p.mode === 'crash') { ctx.fillStyle = '#ffe14a'; for (let i = 0; i < 3; i++) { const a = T * 5 + i * 2.1; ctx.fillRect(sx + Math.cos(a) * 26 - 3, sy - 54 + Math.sin(a) * 8, 6, 6); } }
         break; }
       case 'shiba': {
@@ -918,10 +1111,11 @@ function hud(dt) {
   hudAcc += dt; if (hudAcc < 0.08) return; hudAcc = 0;
   $('hDist').innerHTML = Math.floor(G.dist).toLocaleString() + '<small>m</small>';
   $('hCups').textContent = String(G.cups).padStart(2, '0');
-  $('hAmmo').textContent = '手上 ' + G.ammo;
-  $('hAmmo').classList.toggle('ready', G.ammo > 0 && !!G.shiba && !G.shiba.leaving);
+  const tg = G.state === 'play' ? throwTarget() : null;
+  $('hAmmo').textContent = tg ? (tg === G.shiba ? '↑ 丟柴犬' : '↑ 丟外送員') : '↑ 丟';
+  $('hAmmo').classList.toggle('ready', G.cups > 0 && !!tg);
   const chase = !!G.shiba && !G.shiba.leaving;
-  const left = chase ? G.shiba.t0 + SHIBA_ON - G.t : G.shiba ? SHIBA_OFF : G.nextShiba - G.t;
+  const left = chase ? G.shiba.t0 + SHIBA_ON - G.t : G.nextShiba - G.t;
   $('hTimeLab').textContent = chase ? '柴犬離開' : '柴犬出動';
   $('hTime').textContent = mmss(left);
   $('hTime').classList.toggle('blink', (chase || left <= 3) && G.state === 'play');

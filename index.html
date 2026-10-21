@@ -88,7 +88,7 @@ window.addEventListener('message',async e=>{const d=e.data;if(!d||typeof d!=='ob
 const GAMES=[
   {id:'skifree',src:'games/skifree.html',name:'SkiFree',zh:'滑雪大冒險',desc:'一路往下滑，閃樹、跳台、耍特技。滑超過 2000 公尺……小心雪怪。',keys:'← → 轉向 · ↓ 下坡 · F 加速 · Space 特技',ic:'⛷️',deco:'🌲❄️🏔️',c1:'#7fd3ff',c2:'#2c3fd1'},
   {id:'chips',src:'games/chips-challenge.html',name:"Chip's Challenge",zh:'晶片大挑戰',desc:'收集所有晶片、找鑰匙開門、閃怪物，走到出口過關。共 6 關，進度會自動存。',keys:'方向鍵／WASD 移動 · R 重來 · P 暫停',ic:'🧩',deco:'💾🔑👾',c1:'#7dffb2',c2:'#1f8a5b'},
-  {id:'shiba',src:'games/shiba.html',name:'Shiba外送',zh:'柴犬追著要餐',desc:'騎機車送最後一單，閃違停和坑洞、撿珍奶。柴犬下樓時丟珍奶讓牠減速。3 顆愛心，有共用排行榜。',keys:'← → 閃避 · ↓ 加速 · Space 煞車 · ↑ 丟飲料',ic:'🐕',deco:'🛵🧋🐾',c1:'#ffc06a',c2:'#13606e'}];
+  {id:'shiba',src:'games/shiba.html',name:'Shiba外送',zh:'柴犬追著要餐',desc:'騎機車送最後一單，每 60 秒換一區：巷弄 → 商圈 → 雨夜施工。丟珍奶讓柴犬減速，丟中外送員 +10 杯；排行榜前 3 名解鎖彩虹機車。',keys:'← → 閃避 · ↓ 加速 · Space 煞車 · ↑ 丟飲料',ic:'🐕',deco:'🛵🧋🐾',c1:'#ffc06a',c2:'#13606e'}];
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let cur=null;try{const h=location.hash.slice(1);if(GAMES.some(g=>g.id===h))cur=h}catch(e){}
 function render(){
