@@ -1,0 +1,20 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 排行榜：任何人可讀；每個匿名身分只能寫自己那一筆，欄位與數值範圍有檢查
+    match /shiba_scores/{uid} {
+      allow read: if true;
+      allow create, update: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['name', 'cups', 'dist', 'at'])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 12
+        && request.resource.data.cups is int && request.resource.data.cups >= 0 && request.resource.data.cups < 100000
+        && request.resource.data.dist is int && request.resource.data.dist >= 0 && request.resource.data.dist < 10000000
+        && request.resource.data.at is int;
+      allow delete: if false;
+    }
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>摸魚遊戲廳</title>
+<style>html,body{margin:0}[hidden]{display:none!important}</style>
+
+<style>
+/* Layout: one neon arcade room — marquee header, a row of glowing cabinets; picking one swaps the room for the game screen. Single dark look by choice (an arcade). */
+:root{
+  --room:#0b0a22;--room-2:#1a1446;--room-3:#3b2a8a;
+  --ink:#f2f0ff;--ink-2:#cfcaf5;--ink-3:#a8a3d6;
+  --neon:#ff4fd8;--neon-2:#8a3cff;--cyan:#9fe8ff;
+  --font:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  --display:"Roboto Condensed","Noto Sans TC",system-ui,sans-serif;
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{background:var(--room);color:var(--ink);font-family:var(--font)}
+.arc{position:relative;min-height:100%;overflow-x:clip;box-sizing:border-box;
+  padding-block:28px 22px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  background:radial-gradient(ellipse at 50% -10%,var(--room-3) 0%,var(--room-2) 45%,var(--room) 100%)}
+.bub i{position:absolute;bottom:-40px;width:14px;height:14px;border-radius:50%;border:1.5px solid rgba(160,220,255,.45);background:radial-gradient(circle at 30% 30%,rgba(255,255,255,.5),rgba(120,200,255,.08));animation:bub 9s linear infinite;pointer-events:none}
+.bub i:nth-child(odd){width:9px;height:9px;animation-duration:7s}.bub i:nth-child(3n){width:20px;height:20px;animation-duration:12s}
+.hd{position:relative;text-align:center;margin-bottom:24px}
+.neon{font-family:var(--display);font-size:clamp(32px,6vw,48px);font-weight:800;letter-spacing:.12em;color:#fff;text-wrap:balance;text-shadow:0 0 6px var(--neon),0 0 18px var(--neon),0 0 36px var(--neon-2);margin:0}
+.sub{margin-top:8px;font-size:14px;letter-spacing:.2em;color:var(--cyan);text-shadow:0 0 8px #3ec5ff;animation:blink 1.6s steps(2) infinite}
+.row{position:relative;display:flex;flex-wrap:wrap;justify-content:center;gap:26px}
+.cab{width:250px;max-width:100%;display:flex;flex-direction:column;align-items:stretch;gap:8px;padding:12px 14px 14px;border:0;border-radius:22px 22px 10px 10px;cursor:pointer;font:inherit;color:#fff;text-align:center;
+  background:linear-gradient(180deg,#2a2160,#15113a);box-shadow:0 0 0 3px var(--c1),0 0 26px -2px var(--c1),inset 0 -8px 0 rgba(0,0,0,.35);transition:transform .15s,box-shadow .15s}
+.cab:hover,.cab:focus-visible{transform:translateY(-6px) scale(1.02);box-shadow:0 0 0 3px var(--c1),0 0 44px 4px var(--c1),inset 0 -8px 0 rgba(0,0,0,.35);outline:none}
+.mq{font-family:var(--display);font-weight:800;font-size:17px;letter-spacing:.08em;padding:7px 6px;border-radius:12px 12px 4px 4px;background:linear-gradient(90deg,var(--c2),var(--c1));text-shadow:0 1px 0 rgba(0,0,0,.4)}
+.scr{position:relative;height:150px;border-radius:12px;background:radial-gradient(circle at 50% 40%,#16305a,#050816);border:4px solid #0a0a14;box-shadow:inset 0 0 22px rgba(127,211,255,.35);overflow:hidden;display:block}
+.scr::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(255,255,255,.05) 0 1px,transparent 1px 3px);pointer-events:none}
+.ic{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);font-size:58px;filter:drop-shadow(0 0 10px var(--c1));animation:bob 2.4s ease-in-out infinite}
+.deco{position:absolute;left:0;right:0;top:8px;font-size:15px;letter-spacing:10px;opacity:.75}
+.press{position:absolute;left:0;right:0;bottom:10px;font-size:12px;font-weight:700;letter-spacing:.2em;color:var(--c1);animation:blink 1.1s steps(2) infinite}
+.zh{font-size:16px;font-weight:800}.desc{font-size:12.5px;line-height:1.5;color:var(--ink-2);min-height:56px}
+.ctl{display:flex;justify-content:center;align-items:center;gap:14px;padding:8px 0 2px;border-top:2px solid rgba(255,255,255,.08)}
+.joy{width:14px;height:22px;border-radius:7px 7px 3px 3px;background:#e33;box-shadow:0 8px 0 -3px #333}.bt{width:16px;height:16px;border-radius:50%;background:#ffd23f;box-shadow:inset 0 -3px 0 rgba(0,0,0,.3)}.bt.b{background:#3fd2ff}
+.coin{font-size:13px;font-weight:800;letter-spacing:.06em;padding:8px;border-radius:10px;background:var(--c1);color:var(--room)}.coin small{font-weight:700;opacity:.7;margin-left:4px}
+.cab.soon{cursor:default;opacity:.55;--c1:#8a86b8;--c2:#4a4680;filter:grayscale(.4)}.cab.soon:hover{transform:none}
+.ft{position:relative;text-align:center;font-size:12px;color:var(--ink-3);margin:24px 0 0}
+/* playing */
+.arc.playing{height:100%;min-height:0;padding-block:10px;display:flex;flex-direction:column}
+.play{flex:1;min-height:0;display:flex;flex-direction:column;gap:8px}
+.bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px}.bar b{font-size:16px}.keys{font-size:12.5px;color:var(--ink-3)}
+.back{border:0;border-radius:10px;padding:8px 14px;font:inherit;font-weight:700;font-size:13px;cursor:pointer;background:var(--neon);color:#fff;box-shadow:0 0 14px var(--neon)}
+.back:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.screen{flex:1;min-height:300px;border-radius:14px;overflow:hidden;border:1px solid #2c2860;background:#000}
+.screen iframe{width:100%;height:100%;border:0;display:block}
+.tip{margin:0;font-size:12px;color:var(--ink-3)}
+@keyframes bub{from{transform:translateY(0);opacity:0}10%{opacity:1}to{transform:translateY(-110vh);opacity:0}}
+@keyframes bob{50%{transform:translate(-50%,-58%)}}@keyframes blink{50%{opacity:.35}}
+@media (prefers-reduced-motion:reduce){.bub i,.ic,.press,.sub{animation:none}.cab{transition:none}}
+@media (max-width:560px){.cab{width:100%}}
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;800&family=Roboto+Condensed:wght@700;800&display=swap">
+
+</head><body>
+<div class="arc" id="app"></div>
+
+<script src="firebase-config.js"></script>
+<script type="module">
+/* Shiba外送 排行榜：遊戲在內嵌框裡，用 postMessage 把成績交給這頁；這頁用 Firebase（匿名登入 + Firestore）讀寫 shiba_scores。
+   沒有登入任何帳號也能玩：每個瀏覽器會拿到一個匿名身分，排行榜一個身分一筆。 */
+import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import {getAuth, signInAnonymously, onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import {getFirestore, collection, query, limit, onSnapshot, doc, setDoc} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+const BR={rows:[],uid:null,state:'loading',started:false,fs:null};
+function push(){document.querySelectorAll('iframe').forEach(f=>{try{f.contentWindow.postMessage({type:'shiba:rows',state:BR.state,rows:BR.rows,uid:BR.uid},'*')}catch(e){}})}
+function init(){if(BR.started)return;BR.started=true;
+  const cfg=window.FIREBASE_CONFIG;
+  if(!cfg||!cfg.apiKey){BR.state='off';push();return}
+  try{const app=initializeApp(cfg),auth=getAuth(app);BR.fs=getFirestore(app);
+    onAuthStateChanged(auth,u=>{if(u){BR.uid=u.uid;push()}});
+    signInAnonymously(auth).catch(()=>{BR.state='err';push()});
+    onSnapshot(query(collection(BR.fs,'shiba_scores'),limit(1000)),s=>{BR.rows=s.docs.map(d=>Object.assign({id:d.id},d.data()));BR.state='ok';push()},()=>{BR.state='err';push()});
+  }catch(e){BR.state='err';push()}}
+window.addEventListener('message',async e=>{const d=e.data;if(!d||typeof d!=='object'||typeof d.type!=='string'||!d.type.startsWith('shiba:'))return;
+  if(![...document.querySelectorAll('iframe')].some(f=>f.contentWindow===e.source))return;
+  if(d.type==='shiba:hello'){init();push()}
+  else if(d.type==='shiba:save'){const reply=r=>{try{e.source.postMessage(Object.assign({type:'shiba:saved',id:d.id},r),'*')}catch(_){}};
+    if(!BR.fs||!BR.uid)return reply({ok:false,code:'off'});
+    const name=String(d.name||'').replace(/[\u0000-\u001f\u007f<>]/g,'').trim().slice(0,12),cups=Math.max(0,Math.floor(+d.cups||0)),dist=Math.max(0,Math.floor(+d.dist||0));
+    if(!name)return reply({ok:false,code:'invalid'});
+    try{await setDoc(doc(BR.fs,'shiba_scores',BR.uid),{name,cups,dist,at:Date.now()});reply({ok:true})}catch(err){reply({ok:false,code:(err&&err.code)||'error'})}}});
+</script>
+<script>
+const GAMES=[
+  {id:'skifree',src:'games/skifree.html',name:'SkiFree',zh:'滑雪大冒險',desc:'一路往下滑，閃樹、跳台、耍特技。滑超過 2000 公尺……小心雪怪。',keys:'← → 轉向 · ↓ 下坡 · F 加速 · Space 特技',ic:'⛷️',deco:'🌲❄️🏔️',c1:'#7fd3ff',c2:'#2c3fd1'},
+  {id:'chips',src:'games/chips-challenge.html',name:"Chip's Challenge",zh:'晶片大挑戰',desc:'收集所有晶片、找鑰匙開門、閃怪物，走到出口過關。共 6 關，進度會自動存。',keys:'方向鍵／WASD 移動 · R 重來 · P 暫停',ic:'🧩',deco:'💾🔑👾',c1:'#7dffb2',c2:'#1f8a5b'},
+  {id:'shiba',src:'games/shiba.html',name:'Shiba外送',zh:'柴犬追著要餐',desc:'騎機車送最後一單，閃違停和坑洞、撿珍奶。柴犬下樓時丟珍奶讓牠減速。3 顆愛心，有共用排行榜。',keys:'← → 閃避 · ↓ 加速 · Space 煞車 · ↑ 丟飲料',ic:'🐕',deco:'🛵🧋🐾',c1:'#ffc06a',c2:'#13606e'}];
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let cur=null;try{const h=location.hash.slice(1);if(GAMES.some(g=>g.id===h))cur=h}catch(e){}
+function render(){
+  const app=document.getElementById('app');const g=GAMES.find(x=>x.id===cur);
+  if(g){
+    app.innerHTML=`<div class="play"><div class="bar"><button class="back" id="back" type="button">← 回到遊戲廳</button><b>${g.ic} ${esc(g.name)}</b><span class="keys">${esc(g.keys)}・先在遊戲畫面點一下，鍵盤才會作用</span></div>
+      <div class="screen"><iframe id="game" src="${g.src}" title="${esc(g.name)}" allow="fullscreen"></iframe></div></div>`;app.classList.add('playing');
+    const f=document.getElementById('game');f.addEventListener('load',()=>{try{f.focus()}catch(e){}});
+    document.getElementById('back').addEventListener('click',()=>{cur=null;try{history.replaceState(null,'',location.pathname)}catch(e){}render()});
+    return;
+  }
+  app.classList.remove('playing');
+  app.innerHTML=`<div class="bub" aria-hidden="true">${[...Array(14)].map((_,k)=>`<i style="left:${(k*7+3)%96}%;animation-delay:${((k*0.7)%8).toFixed(1)}s"></i>`).join('')}</div>
+    <header class="hd"><h1 class="neon">摸魚遊戲廳</h1><div class="sub">🫧🐡🐟🐠 INSERT COIN · 選一台開始玩</div></header>
+    <div class="row">${GAMES.map((x,k)=>`<button class="cab" type="button" data-g="${x.id}" style="--c1:${x.c1};--c2:${x.c2}">
+      <span class="mq">${esc(x.name)}</span>
+      <span class="scr"><span class="ic">${x.ic}</span><span class="deco">${x.deco}</span><span class="press">PRESS START</span></span>
+      <span class="zh">${esc(x.zh)}</span><span class="desc">${esc(x.desc)}</span>
+      <span class="ctl"><i class="joy"></i><i class="bt"></i><i class="bt b"></i></span>
+      <span class="coin">▶ 投幣開玩 <small>P${k+1}</small></span></button>`).join('')}
+      <div class="cab soon" aria-disabled="true"><span class="mq">COMING SOON</span><span class="scr"><span class="ic">🐠</span><span class="press">敬請期待</span></span><span class="zh">下一台施工中</span><span class="desc">更多摸魚遊戲陸續上架。</span></div></div>
+    <p class="ft">🐟 小提醒：Shiba外送 的排行榜大家共用，其他遊戲紀錄只存在你自己的瀏覽器。</p>`;
+  app.querySelectorAll('[data-g]').forEach(b=>b.addEventListener('click',()=>{cur=b.dataset.g;try{history.replaceState(null,'','#'+cur)}catch(e){}render();window.scrollTo(0,0)}));
+}
+render();
+</script>
+
+</body></html>
