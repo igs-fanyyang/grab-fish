@@ -102,7 +102,7 @@ body{margin:0;background:var(--street);color:var(--ink);font-family:var(--cjk);o
 .stagehint b{color:var(--num);font-weight:400}
 .rb{font-size:15px;padding:1px 8px;border:2px solid var(--frame);color:var(--ink);white-space:nowrap;
   background:linear-gradient(90deg,#ff7a7a,#ffd36b,#9ff28a,#7fd8ff,#c9a2ff)}
-.board .empty{display:block;padding:18px 12px;font-size:17px;color:#5d5648;text-align:center}
+.board .empty{grid-column:1/-1;display:block;padding:18px 12px;font-size:17px;color:#5d5648;text-align:center}
 @media (max-width:640px){
   .tbar h1{font-size:19px}.tbar .en{display:none}
   .hud .lab{font-size:16px}.hud .val{font-size:21px}.hud .val small{font-size:14px}.hud .cell{gap:6px}
@@ -727,7 +727,7 @@ if (EMBED) {
     else if (d.type === 'shiba:saved') { const f = pendingSave.get(d.id); if (f) { pendingSave.delete(d.id); f(d); } }
   });
   try { window.parent.postMessage({type: 'shiba:hello'}, '*'); } catch (e) { dbState = 'off'; }
-  setTimeout(() => { if (dbState === 'loading') { dbState = 'off'; renderBoard(); } }, 12000);
+  setTimeout(() => { if (dbState === 'loading') { dbState = 'off'; renderBoard(); } }, 20000);
 } else (async () => {
   try {
     const C = window.claude && typeof window.claude.use === 'function' ? window.claude : null;
@@ -778,7 +778,7 @@ function renderBoard() {
   const note = $('boardNote');
   note.textContent = '每位外送員只留最佳成績。';
   if (dbState === 'loading') return empty('讀取排行榜中……');
-  if (dbState === 'off') return empty('排行榜暫時連不上，請稍後重新整理。');
+  if (dbState === 'off') return empty('排行榜連不上。可能是公司網路、VPN 或廣告封鎖外掛擋住了 Google Firebase，換個網路（例如手機熱點）或關掉封鎖外掛後重新整理。');
   if (dbState === 'err') return empty('排行榜暫時讀不到，請重新整理頁面。');
   const k = boardTab, o = k === 'cups' ? 'dist' : 'cups', unit = k === 'cups' ? ' 杯' : 'm';
   const sorted = rows.filter(r => typeof r.name === 'string' && typeof r[k] === 'number' && r[k] > 0)

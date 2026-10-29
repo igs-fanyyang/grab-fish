@@ -62,19 +62,22 @@ body{background:var(--room);color:var(--ink);font-family:var(--font)}
 <script type="module">
 /* Shiba外送 排行榜：遊戲在內嵌框裡，用 postMessage 把成績交給這頁；這頁用 Firebase（匿名登入 + Firestore）讀寫 shiba_scores。
    沒有登入任何帳號也能玩：每個瀏覽器會拿到一個匿名身分，排行榜一個身分一筆。 */
-import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import {getAuth, signInAnonymously, onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-import {getFirestore, collection, query, limit, onSnapshot, doc, setDoc} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+/* 動態載入：公司網路或封鎖外掛擋住 gstatic 時，照樣回覆遊戲「連不上」，不會一直卡在讀取中 */
 const BR={rows:[],uid:null,state:'loading',started:false,fs:null};
 function push(){document.querySelectorAll('iframe').forEach(f=>{try{f.contentWindow.postMessage({type:'shiba:rows',state:BR.state,rows:BR.rows,uid:BR.uid},'*')}catch(e){}})}
-function init(){if(BR.started)return;BR.started=true;
+let FB=null;
+async function init(){if(BR.started)return;BR.started=true;
   const cfg=window.FIREBASE_CONFIG;
   if(!cfg||!cfg.apiKey){BR.state='off';push();return}
-  try{const app=initializeApp(cfg),auth=getAuth(app);BR.fs=getFirestore(app);
-    onAuthStateChanged(auth,u=>{if(u){BR.uid=u.uid;push()}});
-    signInAnonymously(auth).catch(()=>{BR.state='err';push()});
-    onSnapshot(query(collection(BR.fs,'shiba_scores'),limit(1000)),s=>{BR.rows=s.docs.map(d=>Object.assign({id:d.id},d.data()));BR.state='ok';push()},()=>{BR.state='err';push()});
-  }catch(e){BR.state='err';push()}}
+  try{const V='https://www.gstatic.com/firebasejs/10.12.2/';
+    const [A,U,F]=await Promise.all([import(V+'firebase-app.js'),import(V+'firebase-auth.js'),import(V+'firebase-firestore.js')]);FB=F;
+    const app=A.initializeApp(cfg),auth=U.getAuth(app);
+    /* 長輪詢：公司 proxy／防毒常會卡住 Firestore 預設的串流連線 */
+    BR.fs=F.initializeFirestore(app,{experimentalForceLongPolling:true});
+    U.onAuthStateChanged(auth,u=>{if(u){BR.uid=u.uid;push()}});
+    U.signInAnonymously(auth).catch(()=>{BR.state='err';push()});
+    F.onSnapshot(F.query(F.collection(BR.fs,'shiba_scores'),F.limit(1000)),s=>{BR.rows=s.docs.map(d=>Object.assign({id:d.id},d.data()));BR.state='ok';push()},()=>{BR.state='err';push()});
+  }catch(e){BR.state='off';push()}}
 window.addEventListener('message',async e=>{const d=e.data;if(!d||typeof d!=='object'||typeof d.type!=='string'||!d.type.startsWith('shiba:'))return;
   if(![...document.querySelectorAll('iframe')].some(f=>f.contentWindow===e.source))return;
   if(d.type==='shiba:hello'){init();push()}
@@ -82,7 +85,7 @@ window.addEventListener('message',async e=>{const d=e.data;if(!d||typeof d!=='ob
     if(!BR.fs||!BR.uid)return reply({ok:false,code:'off'});
     const name=String(d.name||'').replace(/[\u0000-\u001f\u007f<>]/g,'').trim().slice(0,12),cups=Math.max(0,Math.floor(+d.cups||0)),dist=Math.max(0,Math.floor(+d.dist||0));
     if(!name)return reply({ok:false,code:'invalid'});
-    try{await setDoc(doc(BR.fs,'shiba_scores',BR.uid),{name,cups,dist,at:Date.now()});reply({ok:true})}catch(err){reply({ok:false,code:(err&&err.code)||'error'})}}});
+    try{await FB.setDoc(FB.doc(BR.fs,'shiba_scores',BR.uid),{name,cups,dist,at:Date.now()});reply({ok:true})}catch(err){reply({ok:false,code:(err&&err.code)||'error'})}}});
 </script>
 <script>
 const GAMES=[
