@@ -726,7 +726,10 @@ if (EMBED) {
     if (d.type === 'shiba:rows') { rows = Array.isArray(d.rows) ? d.rows : []; UID = d.uid || null; dbState = d.state || 'off'; DB = dbState === 'ok' ? 'bridge' : null; renderBoard(); }
     else if (d.type === 'shiba:saved') { const f = pendingSave.get(d.id); if (f) { pendingSave.delete(d.id); f(d); } }
   });
-  try { window.parent.postMessage({type: 'shiba:hello'}, '*'); } catch (e) { dbState = 'off'; }
+  // 遊戲廳的排行榜程式可能比這頁晚啟動（網路慢時），所以還沒拿到資料前每 2 秒再打一次招呼，最多 60 秒
+  const hello = () => { try { window.parent.postMessage({type: 'shiba:hello'}, '*'); } catch (e) { dbState = 'off'; } };
+  hello(); let helloN = 0;
+  const helloT = setInterval(() => { if ((dbState !== 'loading' && dbState !== 'off') || ++helloN >= 30) { clearInterval(helloT); return; } hello(); }, 2000);
   setTimeout(() => { if (dbState === 'loading') { dbState = 'off'; renderBoard(); } }, 20000);
 } else (async () => {
   try {

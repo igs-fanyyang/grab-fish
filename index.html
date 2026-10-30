@@ -53,7 +53,8 @@ body{background:var(--room);color:var(--ink);font-family:var(--font)}
 @media (prefers-reduced-motion:reduce){.bub i,.ic,.press,.sub{animation:none}.cab{transition:none}}
 @media (max-width:560px){.cab{width:100%}}
 </style>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;800&family=Roboto+Condensed:wght@700;800&display=swap">
+<!-- 字型不擋住程式：網路慢時 Google 字型可能要 20 秒以上，載完才套用 -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;800&family=Roboto+Condensed:wght@700;800&display=swap" media="print" onload="this.media='all'">
 
 </head><body>
 <div class="arc" id="app"></div>
@@ -78,6 +79,8 @@ async function init(){if(BR.started)return;BR.started=true;
     U.signInAnonymously(auth).catch(()=>{BR.state='err';push()});
     F.onSnapshot(F.query(F.collection(BR.fs,'shiba_scores'),F.limit(1000)),s=>{BR.rows=s.docs.map(d=>Object.assign({id:d.id},d.data()));BR.state='ok';push()},()=>{BR.state='err';push()});
   }catch(e){BR.state='off';push()}}
+/* 不等遊戲打招呼就先連線：遊戲的 hello 可能比這段程式早送到而遺失 */
+init();
 window.addEventListener('message',async e=>{const d=e.data;if(!d||typeof d!=='object'||typeof d.type!=='string'||!d.type.startsWith('shiba:'))return;
   if(![...document.querySelectorAll('iframe')].some(f=>f.contentWindow===e.source))return;
   if(d.type==='shiba:hello'){init();push()}
