@@ -67,6 +67,9 @@ body{background:var(--room);color:var(--ink);font-family:var(--font)}
 const BR={rows:[],uid:null,state:'loading',started:false,fs:null};
 function push(){document.querySelectorAll('iframe').forEach(f=>{try{f.contentWindow.postMessage({type:'shiba:rows',state:BR.state,rows:BR.rows,uid:BR.uid},'*')}catch(e){}})}
 let FB=null;
+/* 成績上限要和 firestore.rules 一致：一局最多 15 分鐘，距離每秒最多 62 m、杯數每秒最多 8 杯。超過的是偽造成績，不顯示 */
+const MAX_DIST=15*60*62+100,MAX_CUPS=15*60*8+30;
+const ok=r=>!(+r.dist>MAX_DIST||+r.cups>MAX_CUPS);
 async function init(){if(BR.started)return;BR.started=true;
   const cfg=window.FIREBASE_CONFIG;
   if(!cfg||!cfg.apiKey){BR.state='off';push();return}
@@ -77,13 +80,15 @@ async function init(){if(BR.started)return;BR.started=true;
     BR.fs=F.initializeFirestore(app,{experimentalForceLongPolling:true});
     U.onAuthStateChanged(auth,u=>{if(u){BR.uid=u.uid;push()}});
     U.signInAnonymously(auth).catch(()=>{BR.state='err';push()});
-    F.onSnapshot(F.query(F.collection(BR.fs,'shiba_scores'),F.limit(1000)),s=>{BR.rows=s.docs.map(d=>Object.assign({id:d.id},d.data()));BR.state='ok';push()},()=>{BR.state='err';push()});
+    F.onSnapshot(F.query(F.collection(BR.fs,'shiba_scores'),F.limit(1000)),s=>{BR.rows=s.docs.map(d=>Object.assign({id:d.id},d.data())).filter(ok);BR.state='ok';push()},()=>{BR.state='err';push()});
   }catch(e){BR.state='off';push()}}
 /* 不等遊戲打招呼就先連線：遊戲的 hello 可能比這段程式早送到而遺失 */
 init();
 window.addEventListener('message',async e=>{const d=e.data;if(!d||typeof d!=='object'||typeof d.type!=='string'||!d.type.startsWith('shiba:'))return;
   if(![...document.querySelectorAll('iframe')].some(f=>f.contentWindow===e.source))return;
   if(d.type==='shiba:hello'){init();push()}
+  /* 每局開始記下伺服器時間：規則用它算這局最多能跑多遠、拿幾杯 */
+  else if(d.type==='shiba:start'){if(BR.fs&&BR.uid)FB.setDoc(FB.doc(BR.fs,'shiba_runs',BR.uid),{start:FB.serverTimestamp()}).catch(()=>{})}
   else if(d.type==='shiba:save'){const reply=r=>{try{e.source.postMessage(Object.assign({type:'shiba:saved',id:d.id},r),'*')}catch(_){}};
     if(!BR.fs||!BR.uid)return reply({ok:false,code:'off'});
     const name=String(d.name||'').replace(/[\u0000-\u001f\u007f<>]/g,'').trim().slice(0,12),cups=Math.max(0,Math.floor(+d.cups||0)),dist=Math.max(0,Math.floor(+d.dist||0));

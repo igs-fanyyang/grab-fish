@@ -688,6 +688,7 @@ function start() {
   NAME = n; $('nameErr').textContent = '';
   try { localStorage.setItem('lastorder-name', NAME); } catch (e) {}
   G.state = 'play'; $('ovTitle').hidden = true; $('pname').blur();
+  runStart();
   SFX.init(); SFX.play('start'); SFX.stage(0); SFX.chase(false); SFX.bgm(true);
 }
 $('nameForm').addEventListener('submit', e => { e.preventDefault(); start(); });
@@ -697,6 +698,7 @@ function togglePause() {
 }
 function again() {
   reset(); G.state = 'play'; hideHint();
+  runStart();
   SFX.init(); SFX.play('start'); SFX.stage(0); SFX.chase(false); SFX.bgm(true);
   for (const id of ['ovOver', 'ovPause', 'ovTitle']) $(id).hidden = true;
 }
@@ -745,6 +747,8 @@ if (EMBED) {
     }, () => { dbState = 'err'; renderBoard(); });
   } catch (e) { dbState = 'off'; renderBoard(); }
 })();
+// 告訴遊戲廳「這局開始了」：遊戲廳記下伺服器時間，排行榜規則依這局實際經過的時間檢查成績上限
+function runStart() { if (EMBED) try { window.parent.postMessage({type: 'shiba:start'}, '*'); } catch (e) {} }
 function putScore(doc) {
   if (DB !== 'bridge') return DB.doc(SCORES + '/' + UID).set(doc);
   return new Promise((res, rej) => {

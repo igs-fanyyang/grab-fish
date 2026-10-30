@@ -1,18 +1,50 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // 排行榜：任何人可讀；每個匿名身分只能寫自己那一筆，欄位與數值範圍有檢查
-    match /shiba_scores/{uid} {
-      allow read: if true;
-      allow create, update: if request.auth != null && request.auth.uid == uid
-        && request.resource.data.keys().hasOnly(['name', 'cups', 'dist', 'at'])
-        && request.resource.data.name is string
-        && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 12
-        && request.resource.data.cups is int && request.resource.data.cups >= 0 && request.resource.data.cups < 100000
-        && request.resource.data.dist is int && request.resource.data.dist >= 0 && request.resource.data.dist < 10000000
-        && request.resource.data.at is int;
+    // 每局開始時，遊戲廳寫入伺服器時間（只能是伺服器時間，3 秒內不能重設）。
+    // 成績能往上加多少，由「這局開始到現在實際經過的秒數」決定，直接打 API 也繞不過：
+    //   一局最多 15 分鐘；距離每秒最多 62 m（加速＋被追 1.3 倍的上限）；杯數每秒最多 8 杯。
+    // 數字改了要一起改 index.html 的 MAX_DIST／MAX_CUPS。
+    function runPath(uid) { return /databases/$(database)/documents/shiba_runs/$(uid); }
+    function runFresh(uid) {
+      return exists(runPath(uid)) && request.time < get(runPath(uid)).data.start + duration.value(15, 'm');
+    }
+    function runSecs(uid) { return (request.time - get(runPath(uid)).data.start).seconds(); }
+    function distOk(uid, d) { return runFresh(uid) && d.dist <= runSecs(uid) * 62 + 100; }
+    function cupsOk(uid, d) { return runFresh(uid) && d.cups <= runSecs(uid) * 8 + 30; }
+    function shape(d) {
+      return d.keys().hasOnly(['name', 'cups', 'dist', 'at'])
+        && d.name is string && d.name.size() > 0 && d.name.size() <= 12
+        && d.cups is int && d.cups >= 0
+        && d.dist is int && d.dist >= 0
+        && d.at is int;
+    }
+
+    match /shiba_runs/{uid} {
+      allow read: if false;
+      allow create: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['start'])
+        && request.resource.data.start == request.time;
+      allow update: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['start'])
+        && request.resource.data.start == request.time
+        && request.time > resource.data.start + duration.value(3, 's');
       allow delete: if false;
     }
+
+    match /shiba_scores/{uid} {
+      allow read: if true;
+      allow create: if request.auth != null && request.auth.uid == uid
+        && shape(request.resource.data)
+        && distOk(uid, request.resource.data) && cupsOk(uid, request.resource.data);
+      // 沒變的欄位（例如只改名字、或只破了杯數紀錄）不用檢查；有變的欄位要符合這局的時間上限
+      allow update: if request.auth != null && request.auth.uid == uid
+        && shape(request.resource.data)
+        && (request.resource.data.dist == resource.data.dist || distOk(uid, request.resource.data))
+        && (request.resource.data.cups == resource.data.cups || cupsOk(uid, request.resource.data));
+      allow delete: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
